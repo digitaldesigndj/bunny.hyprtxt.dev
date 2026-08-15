@@ -22,6 +22,8 @@ interface HeaderBarProps {
   showSettings: boolean;
   happiness: number;
   carrotsEaten: number;
+  bunnyCount: number;
+  onAddBunny: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -34,6 +36,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   showSettings,
   happiness,
   carrotsEaten,
+  bunnyCount,
+  onAddBunny,
 }) => {
   const timePresets: { id: TimeOfDayPreset; label: string; icon: React.ReactNode }[] = [
     { id: 'dawn', label: 'Dawn', icon: <Sun className="w-4 h-4 text-amber-300" /> },
@@ -54,7 +58,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               Meadow Bunny 3D
             </h1>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Interactive Three.js Experience
+              Fluffle of {bunnyCount} {bunnyCount === 1 ? 'Bunny' : 'Bunnies'}
             </p>
           </div>
         </div>
@@ -63,7 +67,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         <div className="hidden sm:flex items-center gap-3 px-3.5 py-2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-2xl border border-white/40 dark:border-zinc-700/50 shadow-md">
           <div className="flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-            <span>{happiness}%</span>
+            <span>{happiness}% Fluffle Mood</span>
           </div>
           <div className="w-[1px] h-3.5 bg-zinc-200 dark:bg-zinc-700" />
           <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">

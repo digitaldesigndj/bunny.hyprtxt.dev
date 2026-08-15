@@ -1,15 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { SceneController } from './SceneController';
-import { BunnyBreed, CameraPreset, EnvironmentConfig, LightingConfig, TimeOfDayPreset } from '../types';
+import { BunnyBreed, BunnyData, CameraPreset, EnvironmentConfig, LightingConfig, TimeOfDayPreset } from '../types';
 
 interface ThreeCanvasProps {
   onControllerReady: (controller: SceneController) => void;
   onStatsUpdate: (happiness: number, carrots: number) => void;
+  onBunniesUpdate?: (bunnies: BunnyData[], selectedId: string) => void;
 }
 
 export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   onControllerReady,
   onStatsUpdate,
+  onBunniesUpdate,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<SceneController | null>(null);
@@ -19,6 +21,9 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     const controller = new SceneController(containerRef.current);
     controller.onStatsUpdate = onStatsUpdate;
+    if (onBunniesUpdate) {
+      controller.onBunniesUpdate = onBunniesUpdate;
+    }
     controllerRef.current = controller;
     onControllerReady(controller);
 

@@ -4,6 +4,20 @@ export type BunnyBreed = 'cotton_white' | 'holland_lop' | 'dutch_two_tone' | 'ci
 
 export type CameraPreset = 'portrait' | 'cinematic' | 'macro' | 'birds_eye';
 
+export interface BunnyData {
+  id: string;
+  name: string;
+  breed: BunnyBreed;
+  isBaby: boolean;
+  scale: number;
+  happiness: number;
+  carrotsEaten: number;
+  isSleeping: boolean;
+  isEating: boolean;
+  isHopping: boolean;
+  position: { x: number; y: number; z: number };
+}
+
 export interface LightingConfig {
   timeOfDay: TimeOfDayPreset;
   sunElevation: number; // 0 to 90 degrees
@@ -44,6 +58,7 @@ export interface BunnyState {
 }
 
 export interface SceneAction {
-  type: 'feed_carrot' | 'pet' | 'hop_to' | 'whistle' | 'toggle_sleep';
+  type: 'feed_carrot' | 'feed_feast' | 'pet' | 'hop_to' | 'whistle' | 'toggle_sleep' | 'add_bunny' | 'remove_bunny';
   targetPos?: { x: number; y: number; z: number };
+  bunnyId?: string;
 }

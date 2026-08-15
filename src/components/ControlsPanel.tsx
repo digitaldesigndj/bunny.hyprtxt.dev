@@ -7,8 +7,12 @@ import {
   X,
   RotateCcw,
   Check,
+  Plus,
+  Trash2,
+  Heart,
+  Baby,
 } from 'lucide-react';
-import { BunnyBreed, CameraPreset, EnvironmentConfig, LightingConfig } from '../types';
+import { BunnyBreed, BunnyData, CameraPreset, EnvironmentConfig, LightingConfig } from '../types';
 
 interface ControlsPanelProps {
   isOpen: boolean;
@@ -21,6 +25,12 @@ interface ControlsPanelProps {
   onBreedChange: (breed: BunnyBreed) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
   onResetLighting: () => void;
+  bunnies: BunnyData[];
+  selectedBunnyId: string;
+  onSelectBunny: (id: string) => void;
+  onAddBunny: (breed?: BunnyBreed, isBaby?: boolean) => void;
+  onRemoveBunny: (id: string) => void;
+  onToggleBaby: (isBaby: boolean) => void;
 }
 
 export const ControlsPanel: React.FC<ControlsPanelProps> = ({
@@ -34,8 +44,14 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onBreedChange,
   onCameraPresetChange,
   onResetLighting,
+  bunnies,
+  selectedBunnyId,
+  onSelectBunny,
+  onAddBunny,
+  onRemoveBunny,
+  onToggleBaby,
 }) => {
-  const [activeTab, setActiveTab] = useState<'lighting' | 'bunny' | 'meadow' | 'camera'>('lighting');
+  const [activeTab, setActiveTab] = useState<'fluffle' | 'lighting' | 'meadow' | 'camera'>('fluffle');
 
   if (!isOpen) return null;
 
@@ -49,19 +65,21 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   ];
 
   const cameraPresets: { id: CameraPreset; label: string; desc: string }[] = [
-    { id: 'portrait', label: 'Portrait Close-Up', desc: 'Focuses on the bunny face and ears' },
-    { id: 'cinematic', label: 'Cinematic Meadow', desc: 'Wide perspective showcasing the landscape' },
+    { id: 'portrait', label: 'Portrait Close-Up', desc: 'Focuses on the selected bunny face and ears' },
+    { id: 'cinematic', label: 'Cinematic Meadow', desc: 'Wide perspective showcasing the fluffle & landscape' },
     { id: 'macro', label: 'Grass Macro', desc: 'Ground-level view nestled in the wildflowers' },
     { id: 'birds_eye', label: "Bird's Eye", desc: 'Top-down aerial view of the full meadow' },
   ];
 
+  const selectedBunny = bunnies.find((b) => b.id === selectedBunnyId) || bunnies[0];
+
   return (
-    <div className="absolute top-20 right-4 z-30 w-[340px] max-h-[calc(100vh-140px)] flex flex-col bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-3xl border border-white/40 dark:border-zinc-700/50 shadow-2xl overflow-hidden transition-all animate-in fade-in slide-in-from-right-4 duration-200">
+    <div className="absolute top-20 right-4 z-30 w-[350px] max-h-[calc(100vh-140px)] flex flex-col bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-3xl border border-white/40 dark:border-zinc-700/50 shadow-2xl overflow-hidden transition-all animate-in fade-in slide-in-from-right-4 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200/60 dark:border-zinc-800/60">
         <div>
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Studio Settings</h2>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Tweak lighting, fur coats & environment</p>
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Meadow Studio</h2>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Fluffle management, coat colors & lighting</p>
         </div>
         <button
           onClick={onClose}
@@ -74,6 +92,18 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
       {/* Tabs */}
       <div className="flex items-center px-4 pt-3 border-b border-zinc-200/50 dark:border-zinc-800/50 gap-1 overflow-x-auto">
         <button
+          onClick={() => setActiveTab('fluffle')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-xl transition-all ${
+            activeTab === 'fluffle'
+              ? 'text-zinc-900 dark:text-white border-b-2 border-pink-500 bg-pink-500/10'
+              : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+          }`}
+        >
+          <Palette className="w-3.5 h-3.5" />
+          <span>Fluffle ({bunnies.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('lighting')}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-xl transition-all ${
             activeTab === 'lighting'
@@ -83,18 +113,6 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
         >
           <Sun className="w-3.5 h-3.5" />
           <span>Lighting</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bunny')}
-          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-xl transition-all ${
-            activeTab === 'bunny'
-              ? 'text-zinc-900 dark:text-white border-b-2 border-pink-500 bg-pink-500/10'
-              : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
-        >
-          <Palette className="w-3.5 h-3.5" />
-          <span>Coat & Breed</span>
         </button>
 
         <button
@@ -124,6 +142,134 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
 
       {/* Content Body */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        {/* FLUFFLE TAB */}
+        {activeTab === 'fluffle' && (
+          <div className="space-y-4">
+            {/* Fluffle Roster */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  Fluffle Roster ({bunnies.length}/10)
+                </span>
+                {bunnies.length < 10 && (
+                  <button
+                    onClick={() => onAddBunny()}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 font-medium text-[11px] transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Adopt Bunny</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                {bunnies.map((b) => {
+                  const isSelected = b.id === selectedBunnyId;
+                  return (
+                    <div
+                      key={b.id}
+                      onClick={() => onSelectBunny(b.id)}
+                      className={`flex items-center justify-between p-2 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-pink-500 bg-pink-500/10 shadow-sm'
+                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white/40 dark:bg-zinc-800/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">🐰</span>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                            <span className="truncate">{b.name}</span>
+                            {isSelected && (
+                              <span className="text-[9px] px-1.5 py-0.5 bg-pink-500 text-white rounded-full font-bold">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                            {b.isBaby ? 'Baby Kit' : 'Adult'} • {b.carrotsEaten} snacks
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-0.5 text-rose-500 font-medium text-[11px]">
+                          <Heart className="w-3 h-3 fill-rose-500" />
+                          <span>{b.happiness}%</span>
+                        </div>
+                        {bunnies.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveBunny(b.id);
+                            }}
+                            title="Remove bunny from meadow"
+                            className="p-1 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors ml-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Bunny Customizer */}
+            {selectedBunny && (
+              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                    Coat for {selectedBunny.name}
+                  </span>
+                  {/* Baby Kit toggle */}
+                  <button
+                    onClick={() => onToggleBaby(!selectedBunny.isBaby)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border transition-all ${
+                      selectedBunny.isBaby
+                        ? 'bg-amber-500/10 border-amber-400 text-amber-600 dark:text-amber-400 font-semibold'
+                        : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <Baby className="w-3 h-3" />
+                    <span>{selectedBunny.isBaby ? 'Baby Kit (Mini)' : 'Adult Size'}</span>
+                  </button>
+                </div>
+
+                {/* Coat & Breed Selection for Active Bunny */}
+                <div className="grid grid-cols-1 gap-1.5">
+                  {breeds.map((b) => {
+                    const selected = selectedBunny.breed === b.id;
+                    return (
+                      <button
+                        key={b.id}
+                        onClick={() => onBreedChange(b.id)}
+                        className={`flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all ${
+                          selected
+                            ? 'border-pink-500 bg-pink-50 dark:bg-pink-950/30 shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white/50 dark:bg-zinc-800/40'
+                        }`}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full border border-black/10 shadow-inner flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: b.color }}
+                        >
+                          {selected && <Check className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs">{b.name}</div>
+                          <div className="text-[10px] text-zinc-500 truncate">{b.desc}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* LIGHTING TAB */}
         {activeTab === 'lighting' && (
           <div className="space-y-4">
@@ -252,42 +398,6 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 onChange={(e) => onLightingChange({ ...lighting, shadowsEnabled: e.target.checked })}
                 className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
               />
-            </div>
-          </div>
-        )}
-
-        {/* BUNNY COAT TAB */}
-        {activeTab === 'bunny' && (
-          <div className="space-y-3">
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Select a breed coat color and ear characteristics:
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {breeds.map((b) => {
-                const selected = breed === b.id;
-                return (
-                  <button
-                    key={b.id}
-                    onClick={() => onBreedChange(b.id)}
-                    className={`flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all ${
-                      selected
-                        ? 'border-pink-500 bg-pink-50 dark:bg-pink-950/30 shadow-sm'
-                        : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white/50 dark:bg-zinc-800/40'
-                    }`}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-full border border-black/10 shadow-inner flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: b.color }}
-                    >
-                      {selected && <Check className="w-4 h-4 text-pink-600 dark:text-pink-400" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-zinc-900 dark:text-zinc-100">{b.name}</div>
-                      <div className="text-[10px] text-zinc-500 truncate">{b.desc}</div>
-                    </div>
-                  </button>
-                );
-              })}
             </div>
           </div>
         )}

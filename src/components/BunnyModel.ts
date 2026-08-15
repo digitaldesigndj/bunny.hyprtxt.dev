@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BunnyBreed } from '../types';
+import { BunnyBreed, BunnyData } from '../types';
 
 export interface BunnyMaterials {
   fur: THREE.MeshStandardMaterial;
@@ -13,6 +13,8 @@ export interface BunnyMaterials {
 }
 
 export class BunnyModel {
+  public id: string;
+  public name: string;
   public group: THREE.Group;
   public headGroup: THREE.Group;
   public bodyGroup: THREE.Group;
@@ -24,9 +26,15 @@ export class BunnyModel {
   public rightFrontLeg: THREE.Group;
   public leftHindLeg: THREE.Group;
   public rightHindLeg: THREE.Group;
+  public selectionRing: THREE.Mesh | null = null;
 
   private materials: BunnyMaterials;
   private breed: BunnyBreed = 'cotton_white';
+  public isBaby: boolean = false;
+  public scaleFactor: number = 1.0;
+  public happiness: number = 85;
+  public carrotsEaten: number = 0;
+  public isSelected: boolean = false;
 
   // Animation states
   public isHopping: boolean = false;
@@ -48,9 +56,24 @@ export class BunnyModel {
   private earTwitchActive: number = 0;
   private chewTimer: number = 0;
 
-  constructor() {
+  // Autonomous wandering behavior
+  private wanderTimer: number = 0;
+  private wanderInterval: number = 4 + Math.random() * 6;
+
+  constructor(
+    id: string = 'bunny_' + Math.random().toString(36).substring(2, 9),
+    name: string = 'Snowdrop',
+    breed: BunnyBreed = 'cotton_white',
+    isBaby: boolean = false
+  ) {
+    this.id = id;
+    this.name = name;
+    this.breed = breed;
+    this.isBaby = isBaby;
+    this.scaleFactor = isBaby ? 0.65 : 1.0;
+
     this.group = new THREE.Group();
-    this.group.name = 'BunnyRoot';
+    this.group.name = `Bunny_${id}`;
 
     // Materials setup
     this.materials = this.createMaterials(this.breed);
@@ -66,7 +89,9 @@ export class BunnyModel {
     this.rightHindLeg = new THREE.Group();
 
     this.buildBunny();
-    this.setBreed('cotton_white');
+    this.buildSelectionRing();
+    this.setBreed(breed);
+    this.setBaby(isBaby);
   }
 
   private createMaterials(breed: BunnyBreed): BunnyMaterials {
@@ -553,6 +578,72 @@ export class BunnyModel {
     return geo;
   }
 
+  public getBreed(): BunnyBreed {
+    return this.breed;
+  }
+
+  public setBaby(isBaby: boolean) {
+    this.isBaby = isBaby;
+    this.scaleFactor = isBaby ? 0.62 : 1.0;
+    this.group.scale.set(this.scaleFactor, this.scaleFactor, this.scaleFactor);
+
+    // Baby bunnies have slightly bigger heads relative to their bodies for cute kitten/kit proportions
+    if (isBaby) {
+      this.headGroup.scale.set(1.18, 1.18, 1.18);
+    } else {
+      this.headGroup.scale.set(1.0, 1.0, 1.0);
+    }
+  }
+
+  public setSelected(selected: boolean) {
+    this.isSelected = selected;
+    if (this.selectionRing) {
+      this.selectionRing.visible = selected;
+    }
+  }
+
+  public pet() {
+    this.triggerEarWiggle();
+    this.happiness = Math.min(100, this.happiness + 4);
+  }
+
+  public getData(): BunnyData {
+    return {
+      id: this.id,
+      name: this.name,
+      breed: this.breed,
+      isBaby: this.isBaby,
+      scale: this.scaleFactor,
+      happiness: this.happiness,
+      carrotsEaten: this.carrotsEaten,
+      isSleeping: this.isSleeping,
+      isEating: this.isEating,
+      isHopping: this.isHopping,
+      position: {
+        x: this.group.position.x,
+        y: this.group.position.y,
+        z: this.group.position.z,
+      },
+    };
+  }
+
+  private buildSelectionRing() {
+    // Soft glowing circle on ground beneath selected bunny
+    const ringGeo = new THREE.RingGeometry(0.65, 0.78, 32);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffa834,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    this.selectionRing = new THREE.Mesh(ringGeo, ringMat);
+    this.selectionRing.position.set(0, 0.03, 0);
+    this.selectionRing.visible = false;
+    this.group.add(this.selectionRing);
+  }
+
   public hopTo(targetX: number, targetZ: number, onComplete?: () => void) {
     if (this.isHopping) return;
     this.isHopping = true;
@@ -587,10 +678,49 @@ export class BunnyModel {
     this.isSleeping = sleeping;
   }
 
-  public update(delta: number) {
+  public update(delta: number, bounds?: { minX: number; maxX: number; minZ: number; maxZ: number }) {
     this.breathTimer += delta * 2.5;
     this.noseTwitchTimer += delta * 12.0;
     this.earTwitchTimer += delta;
+
+    // 0. Autonomous Wander (if not sleeping, eating, or currently hopping)
+    if (!this.isHopping && !this.isSleeping && !this.isEating) {
+      this.wanderTimer += delta;
+      if (this.wanderTimer > this.wanderInterval) {
+        this.wanderTimer = 0;
+        this.wanderInterval = 5 + Math.random() * 8;
+
+        // 60% chance to take a casual wander hop
+        if (Math.random() < 0.65) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 0.5 + Math.random() * 0.9;
+          const bMinX = bounds?.minX ?? -3.8;
+          const bMaxX = bounds?.maxX ?? 3.8;
+          const bMinZ = bounds?.minZ ?? -3.8;
+          const bMaxZ = bounds?.maxZ ?? 3.8;
+
+          let targetX = this.group.position.x + Math.cos(angle) * dist;
+          let targetZ = this.group.position.z + Math.sin(angle) * dist;
+
+          // Stay within meadow bounds & avoid deep pond area (x > 3 && z > 3)
+          targetX = Math.max(bMinX, Math.min(bMaxX, targetX));
+          targetZ = Math.max(bMinZ, Math.min(bMaxZ, targetZ));
+
+          if (targetX > 2.5 && targetZ > 2.5) {
+            targetX -= 1.5;
+            targetZ -= 1.5;
+          }
+
+          this.hopTo(targetX, targetZ);
+        }
+      }
+    }
+
+    // Pulse selection ring if selected
+    if (this.selectionRing && this.isSelected) {
+      const pulse = 0.7 + Math.sin(this.breathTimer * 2) * 0.25;
+      (this.selectionRing.material as THREE.MeshBasicMaterial).opacity = pulse;
+    }
 
     // 1. Nose twitching
     const noseTwitch = Math.sin(this.noseTwitchTimer) * 0.008;
@@ -704,7 +834,7 @@ export class BunnyModel {
       this.group.position.z = THREE.MathUtils.lerp(this.hopStartPos.z, this.hopTargetPos.z, this.hopProgress);
 
       // Parabolic jump arc Y
-      const jumpHeight = 0.65;
+      const jumpHeight = 0.65 * this.scaleFactor;
       const jumpY = Math.sin(this.hopProgress * Math.PI) * jumpHeight;
       this.group.position.y = jumpY;
 

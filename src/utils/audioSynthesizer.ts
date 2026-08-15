@@ -286,6 +286,58 @@ class AudioSynthesizer {
     }
   }
 
+  public playWhistleSound() {
+    if (!this.ctx || this.isMuted || !this.masterGain) return;
+    try {
+      const notes = [880, 1174.66, 1318.51]; // A5 -> D6 -> E6 joyful whistle
+      notes.forEach((freq, idx) => {
+        const now = this.ctx!.currentTime + idx * 0.12;
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.05, now + 0.1);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.14, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  public playPopSound() {
+    if (!this.ctx || this.isMuted || !this.masterGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+      // ignore
+    }
+  }
+
   public dispose() {
     if (this.birdTimer) window.clearTimeout(this.birdTimer);
     if (this.cricketTimer) window.clearTimeout(this.cricketTimer);
